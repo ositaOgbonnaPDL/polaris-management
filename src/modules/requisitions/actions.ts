@@ -1,0 +1,179 @@
+"use server";
+
+import { db } from "@/db";
+import { requisitions, requisitionItems, emailThreads } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { requireAuth } from "@/shared/lib/auth";
+import { generateReqNumber } from "./utils";
+import {
+  getStartingStep,
+  getApproverForStep,
+} from "@/modules/approvals/engine";
+import { createApprovalToken } from "@/modules/approvals/tokens";
+import { sendApprovalRequestEmail } from "@/modules/email/mailer";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { z } from "zod";
+
+const RequisitionItemSchema = z.object({
+  description: z.string().optional(),
+});
+
+const SubmitRequisitionSchema = z.object({
+  requestType: z.enum([
+    "office_supplies",
+    "it_equipment",
+    "facility_maintenance",
+    "petty_cash",
+    "other",
+  ]),
+  requestTypeOther: z.string().optional(),
+  reason: z
+    .string()
+    .min(10, "Please provide a reason of at least 10 characters"),
+  urgency: z.enum(["low", "medium", "high"]),
+  deliveryDate: z.string().optional(),
+  requesterAttachmentUrl: z.string().optional(),
+  items: z.array(RequisitionItemSchema).min(1, "Add at least one item"),
+});
+
+export async function submitRequisition(data: unknown) {
+  const session = await requireAuth();
+  const user = session.user;
+
+  const parsed = SubmitRequisitionSchema.safeParse(data);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0].message };
+  }
+
+  const {
+    requestType,
+    requestTypeOther,
+    reason,
+    urgency,
+    deliveryDate,
+    requesterAttachmentUrl,
+    items,
+  } = parsed.data;
+
+  // Determine starting step based on requester's role
+  const { step, status } = getStartingStep(user.role);
+
+  try {
+    // Generate req number
+    const reqNumber = await generateReqNumber();
+
+    // Insert requisition header
+    const [requisition] = await db
+      .insert(requisitions)
+      .values({
+        reqNumber,
+        requesterId: parseInt(user.id),
+        departmentId: parseInt(user.departmentId!),
+        requestType: requestType as any,
+        requestTypeOther: requestType === "other" ? requestTypeOther : null,
+        reason,
+        urgency: urgency as any,
+        deliveryDate: deliveryDate || null,
+        requesterAttachmentUrl: requesterAttachmentUrl || null,
+        status: status as any,
+        currentStep: step,
+      })
+      .returning();
+
+    // Insert line items
+    if (items.length > 0) {
+      await db.insert(requisitionItems).values(
+        items.map((item, index) => ({
+          requisitionId: requisition.id,
+          description: item.description || null,
+          sortOrder: index,
+        })),
+      );
+    }
+
+    // Create email thread root Message-ID for threading
+    const rootMessageId = `<${reqNumber}@polarisdigitech.com>`;
+    await db.insert(emailThreads).values({
+      requisitionId: requisition.id,
+      rootMessageId,
+    });
+
+    // Trigger the first approval email
+    await triggerApprovalEmail(
+      requisition.id,
+      parseInt(user.id),
+      parseInt(user.departmentId!),
+      step,
+    );
+
+    revalidatePath("/requisitions");
+  } catch (error) {
+    console.error("Submit requisition error:", error);
+    return { error: "Failed to submit requisition. Please try again." };
+  }
+
+  // Redirect outside try/catch — Next.js redirect throws internally
+  redirect("/requisitions");
+}
+
+/**
+ * Triggers the approval email for the current step.
+ * Extracted so it can be reused when advancing steps.
+ */
+export async function triggerApprovalEmail(
+  requisitionId: number,
+  requesterId: number,
+  departmentId: number,
+  step: number,
+) {
+  const approver = await getApproverForStep(step, requesterId, departmentId);
+  if (!approver) {
+    console.error(`No approver found for step ${step}, req ${requisitionId}`);
+    return;
+  }
+
+  // Create a one-time token for this approver
+  const token = await createApprovalToken(requisitionId, approver.id);
+
+  // Get full requisition data for the email
+  const req = await db.query.requisitions.findFirst({
+    where: eq(requisitions.id, requisitionId),
+    with: {
+      requester: true,
+      department: true,
+      items: true,
+    },
+  });
+
+  if (!req) return;
+
+  // Get email thread ID for threading
+  const thread = await db.query.emailThreads.findFirst({
+    where: eq(emailThreads.requisitionId, requisitionId),
+  });
+
+  await sendApprovalRequestEmail({
+    requisition: req as any,
+    approver,
+    token,
+    step,
+    rootMessageId: thread?.rootMessageId,
+  });
+}
+
+// Fetch requisitions for the current staff member
+export async function getMyRequisitions() {
+  const session = await requireAuth();
+
+  const myReqs = await db.query.requisitions.findMany({
+    where: eq(requisitions.requesterId, parseInt(session.user.id)),
+    with: {
+      department: true,
+      items: true,
+    },
+    orderBy: (req, { desc }) => [desc(req.createdAt)],
+  });
+
+  return myReqs;
+}
