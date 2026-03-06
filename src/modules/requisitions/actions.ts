@@ -1,7 +1,12 @@
 "use server";
 
 import { db } from "@/db";
-import { requisitions, requisitionItems, emailThreads } from "@/db/schema";
+import {
+  requisitions,
+  requisitionItems,
+  approvalActions,
+  emailThreads,
+} from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "@/shared/lib/auth";
 import { generateReqNumber } from "./utils";
@@ -9,7 +14,6 @@ import {
   getStartingStep,
   getApproverForStep,
 } from "@/modules/approvals/engine";
-import { createApprovalToken } from "@/modules/approvals/tokens";
 import { sendApprovalRequestEmail } from "@/modules/email/mailer";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -127,14 +131,20 @@ export async function triggerApprovalEmail(
   departmentId: number,
   step: number,
 ) {
+  console.log(
+    `[email] triggerApprovalEmail — req ${requisitionId}, step ${step}, requesterId ${requesterId}, deptId ${departmentId}`,
+  );
+
   const approver = await getApproverForStep(step, requesterId, departmentId);
   if (!approver) {
-    console.error(`No approver found for step ${step}, req ${requisitionId}`);
+    console.error(
+      `[email] ✗ No approver found for step ${step}, req ${requisitionId}. Check that an active user with the right role exists.`,
+    );
     return;
   }
-
-  // Create a one-time token for this approver
-  const token = await createApprovalToken(requisitionId, approver.id);
+  console.log(
+    `[email] ✓ Approver found: ${approver.name} <${approver.email}> (role: ${approver.role})`,
+  );
 
   // Get full requisition data for the email
   const req = await db.query.requisitions.findFirst({
@@ -146,20 +156,50 @@ export async function triggerApprovalEmail(
     },
   });
 
-  if (!req) return;
+  if (!req) {
+    console.error(
+      `[email] ✗ Requisition ${requisitionId} not found when building email`,
+    );
+    return;
+  }
 
   // Get email thread ID for threading
   const thread = await db.query.emailThreads.findFirst({
     where: eq(emailThreads.requisitionId, requisitionId),
   });
+  console.log(
+    `[email] Thread rootMessageId: ${thread?.rootMessageId ?? "none"}`,
+  );
 
   await sendApprovalRequestEmail({
     requisition: req as any,
     approver,
-    token,
     step,
     rootMessageId: thread?.rootMessageId,
   });
+}
+
+export async function getRequisitionById(id: number) {
+  const session = await requireAuth();
+
+  const req = await db.query.requisitions.findFirst({
+    where: eq(requisitions.id, id),
+    with: {
+      requester: true,
+      department: true,
+      items: true,
+    },
+  });
+
+  if (!req) return null;
+
+  // Only the requester (or admins) can view
+  if (req.requesterId !== parseInt(session.user.id)) {
+    const adminRoles = ["super_admin", "admin", "finance", "md"];
+    if (!adminRoles.includes(session.user.role)) return null;
+  }
+
+  return req;
 }
 
 // Fetch requisitions for the current staff member
@@ -176,4 +216,94 @@ export async function getMyRequisitions() {
   });
 
   return myReqs;
+}
+
+// Add to existing actions.ts
+
+export async function resubmitRequisition(
+  requisitionId: number,
+  data: unknown,
+) {
+  const session = await requireAuth();
+  const actorId = parseInt(session.user.id);
+
+  const parsed = SubmitRequisitionSchema.safeParse(data);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0].message };
+  }
+
+  const req = await db.query.requisitions.findFirst({
+    where: eq(requisitions.id, requisitionId),
+  });
+
+  if (!req) return { error: "Requisition not found" };
+  if (req.requesterId !== actorId) return { error: "Unauthorized" };
+  if (req.status !== "revision_requester") {
+    return { error: "This requisition cannot be resubmitted" };
+  }
+
+  const {
+    requestType,
+    requestTypeOther,
+    reason,
+    urgency,
+    deliveryDate,
+    requesterAttachmentUrl,
+    items,
+  } = parsed.data;
+
+  const { step, status } = getStartingStep(session.user.role);
+
+  try {
+    await db
+      .update(requisitions)
+      .set({
+        requestType: requestType as any,
+        requestTypeOther: requestType === "other" ? requestTypeOther : null,
+        reason,
+        urgency: urgency as any,
+        deliveryDate: deliveryDate || null,
+        requesterAttachmentUrl: requesterAttachmentUrl || null,
+        status: status as any,
+        currentStep: step,
+        revisionNote: null,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(requisitions.id, requisitionId));
+
+    // Replace line items
+    await db
+      .delete(requisitionItems)
+      .where(eq(requisitionItems.requisitionId, requisitionId));
+
+    if (items.length > 0) {
+      await db.insert(requisitionItems).values(
+        items.map((item, index) => ({
+          requisitionId,
+          description: item.description || null,
+          sortOrder: index,
+        })),
+      );
+    }
+
+    // ── Audit log entry ──────────────────────────────
+    await db.insert(approvalActions).values({
+      requisitionId,
+      actorId,
+      step,
+      action: "resubmitted" as any,
+      previousStatus: "revision_requester",
+      newStatus: status,
+      notes: "Requester resubmitted after revision",
+    });
+
+    await triggerApprovalEmail(requisitionId, actorId, req.departmentId, step);
+
+    revalidatePath("/requisitions");
+  } catch (error) {
+    console.error("Resubmit error:", error);
+    return { error: "Failed to resubmit. Please try again." };
+  }
+
+  redirect(`/requisitions/${requisitionId}`);
 }

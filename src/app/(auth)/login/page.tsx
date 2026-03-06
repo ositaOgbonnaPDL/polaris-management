@@ -1,8 +1,10 @@
+import { Suspense } from "react";
+import type { Metadata } from "next";
 import { LoginForm } from "./_components/login-form";
 import { getSession } from "@/shared/lib/auth";
 import { redirect } from "next/navigation";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Login — Polaris Digitech Staff Portal",
 };
 
@@ -27,7 +29,9 @@ export default async function LoginPage() {
           </p>
         </div>
 
-        <LoginForm />
+        <Suspense>
+          <LoginForm />
+        </Suspense>
 
         <p className="text-center text-xs text-slate-400 mt-6">
           Having trouble logging in? Contact your system administrator.

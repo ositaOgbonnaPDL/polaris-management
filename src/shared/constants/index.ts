@@ -64,5 +64,3 @@ export const APPROVAL_STEPS = {
   },
   4: { role: ROLES.MD, label: "Managing Director", status: "pending_md" },
 } as const;
-
-export const TOKEN_EXPIRY_HOURS = 72;

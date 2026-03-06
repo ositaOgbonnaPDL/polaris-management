@@ -4,6 +4,24 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ── Radix UI data-state variants (Tailwind v4 compatibility) ──────────────
+   Tailwind v4 dropped support for arbitrary data-attribute variants like
+   data-[state=open]:. These @custom-variant definitions restore that
+   behaviour for all Radix UI primitives used in shadcn/ui components.
+   ────────────────────────────────────────────────────────────────────── */
+
+@custom-variant data-state-open (&[data-state="open"]);
+@custom-variant data-state-closed (&[data-state="closed"]);
+@custom-variant data-state-selected (&[data-state="selected"]);
+@custom-variant data-state-checked (&[data-state="checked"]);
+@custom-variant data-state-unchecked (&[data-state="unchecked"]);
+@custom-variant data-state-active (&[data-state="active"]);
+@custom-variant data-state-inactive (&[data-state="inactive"]);
+@custom-variant data-side-top (&[data-side="top"]);
+@custom-variant data-side-bottom (&[data-side="bottom"]);
+@custom-variant data-side-left (&[data-side="left"]);
+@custom-variant data-side-right (&[data-side="right"]);
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

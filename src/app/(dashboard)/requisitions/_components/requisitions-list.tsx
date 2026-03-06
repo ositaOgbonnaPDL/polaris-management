@@ -130,7 +130,7 @@ export function RequisitionsList({
                     </p>
                   </div>
 
-                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                  <div className="flex flex-col items-end gap-2 shrink-0">
                     <span className="flex items-center gap-1 text-xs text-slate-400">
                       <Calendar className="h-3 w-3" />
                       {new Date(req.createdAt).toLocaleDateString("en-NG", {
