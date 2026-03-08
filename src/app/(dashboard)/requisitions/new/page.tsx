@@ -11,7 +11,7 @@ export default async function NewRequisitionPage() {
   // Admin, Finance, MD submit through different flows
   const submitterRoles = [ROLES.STAFF, ROLES.MANAGER, ROLES.ADMIN];
   if (!submitterRoles.includes(session.user.role as any)) {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   return (

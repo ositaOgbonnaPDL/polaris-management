@@ -21,7 +21,7 @@ export default async function ApprovalsPage() {
   const { role, id, departmentId } = session.user;
 
   const pendingStatuses = ROLE_STATUS_MAP[role];
-  if (!pendingStatuses) redirect("/dashboard");
+  if (!pendingStatuses) redirect("/");
 
   // Build query — managers only see their department
   let pendingReqs;

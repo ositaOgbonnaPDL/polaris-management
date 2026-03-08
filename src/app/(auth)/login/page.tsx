@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default async function LoginPage() {
   // Already logged in — go to dashboard
   const session = await getSession();
-  if (session?.user) redirect("/dashboard");
+  if (session?.user) redirect("/");
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">

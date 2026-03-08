@@ -19,19 +19,19 @@ export default withAuth(
     // Role-based route protection
     if (pathname.startsWith("/superadmin")) {
       if (token?.role !== "super_admin") {
-        return NextResponse.redirect(new URL("/dashboard", req.url));
+        return NextResponse.redirect(new URL("/", req.url));
       }
     }
 
     if (pathname.startsWith("/finance")) {
       if (!["finance", "super_admin"].includes(token?.role as string)) {
-        return NextResponse.redirect(new URL("/dashboard", req.url));
+        return NextResponse.redirect(new URL("/", req.url));
       }
     }
 
     if (pathname.startsWith("/admin")) {
       if (!["admin", "super_admin"].includes(token?.role as string)) {
-        return NextResponse.redirect(new URL("/dashboard", req.url));
+        return NextResponse.redirect(new URL("/", req.url));
       }
     }
 

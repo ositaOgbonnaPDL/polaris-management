@@ -7,7 +7,7 @@ export default async function ChangePasswordPage() {
 
   // If they've already changed it, no need to be here
   if (!session.user.mustChangePassword) {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   return (

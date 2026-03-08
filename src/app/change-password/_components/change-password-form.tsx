@@ -58,7 +58,7 @@ export function ChangePasswordForm() {
 
       // Update the JWT token so middleware sees mustChangePassword: false
       await update({ mustChangePassword: false });
-      router.push("/dashboard");
+      router.push("/");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {

@@ -20,7 +20,7 @@ export async function requireRole(roles: Role | Role[]) {
   const allowedRoles = Array.isArray(roles) ? roles : [roles];
 
   if (!allowedRoles.includes(session.user.role as Role)) {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   return session;
