@@ -8,8 +8,9 @@ import { generatePOPdf } from "@/modules/pdf/generate-po";
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (
     !session?.user ||
@@ -19,7 +20,7 @@ export async function GET(
   }
 
   const requisition = await db.query.requisitions.findFirst({
-    where: eq(requisitions.id, parseInt(params.id)),
+    where: eq(requisitions.id, parseInt(id)),
     with: {
       requester: true,
       department: true,

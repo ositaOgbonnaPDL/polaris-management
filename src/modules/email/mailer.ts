@@ -1,4 +1,4 @@
-import { getTransport, FROM_ADDRESS } from "./transport";
+import { sendEmail, FROM_ADDRESS } from "./transport";
 import { getThreadingHeaders } from "./threads";
 import { approvalRequestTemplate } from "./templates/approval-request";
 import { statusUpdateTemplate } from "./templates/status-update";
@@ -104,7 +104,7 @@ export async function sendApprovalRequestEmail(params: {
   );
   console.log(`[email] From: ${FROM_ADDRESS} | Subject: ${subject}`);
   try {
-    const info = await getTransport().sendMail({
+    const info = await sendEmail({
       from: FROM_ADDRESS,
       to: approver.email,
       subject,
@@ -201,7 +201,7 @@ export async function sendStatusUpdateEmail(params: {
   const cc = shouldCc ? await buildCcList(requisitionId, recipient.email) : [];
 
   try {
-    await getTransport().sendMail({
+    await sendEmail({
       from: FROM_ADDRESS,
       to: recipient.email,
       cc: cc.length > 0 ? cc : undefined,

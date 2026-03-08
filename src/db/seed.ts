@@ -27,7 +27,7 @@ async function seed() {
     .insert(schema.users)
     .values({
       name: "Super Admin",
-      email: "support@polarisdigitech.com",
+      email: "support@polarisdigitech.net",
       passwordHash,
       role: "super_admin",
       departmentId: dept.id,
