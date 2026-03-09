@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ROLE_LABELS } from "@/shared/constants";
 import { EditUserDialog } from "./edit-user-dialog";
 import { toggleUserStatus, resetUserPassword } from "@/modules/users/actions";
+import { confirmEmployee } from "@/modules/leave/actions";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -23,7 +24,8 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, KeyRound, UserX, UserCheck } from "lucide-react";
+import { MoreHorizontal, KeyRound, UserX, UserCheck, ShieldCheck } from "lucide-react";
+import { EMPLOYMENT_STATUS_LABELS } from "@/shared/constants";
 
 type User = {
   id: number;
@@ -33,6 +35,7 @@ type User = {
   isActive: boolean;
   mustChangePassword: boolean;
   departmentId: number | null;
+  employmentStatus: string;
   department: { name: string } | null;
 };
 
@@ -54,6 +57,18 @@ export function UsersTable({
       toast.success(`User ${isActive ? "deactivated" : "activated"}`);
     } else {
       toast.error("Failed to update user");
+    }
+    setLoadingId(null);
+  }
+
+  async function handleConfirm(id: number, name: string) {
+    if (!confirm(`Confirm ${name} as a permanent employee? This will grant them their confirmation-year leave entitlements.`)) return;
+    setLoadingId(id);
+    const result = await confirmEmployee(id);
+    if (result.success) {
+      toast.success(`${name} has been confirmed. Leave entitlements granted.`);
+    } else {
+      toast.error(result.error ?? "Failed to confirm employee");
     }
     setLoadingId(null);
   }
@@ -90,6 +105,7 @@ export function UsersTable({
             <TableHead>Role</TableHead>
             <TableHead>Department</TableHead>
             <TableHead>Status</TableHead>
+          <TableHead>Employment</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -97,7 +113,7 @@ export function UsersTable({
           {users.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={5}
+                colSpan={6}
                 className="text-center py-10 text-slate-400"
               >
                 No users yet.
@@ -152,6 +168,18 @@ export function UsersTable({
                     )}
                   </div>
                 </TableCell>
+                <TableCell>
+                  <Badge
+                    variant="secondary"
+                    className={
+                      user.employmentStatus === "confirmed"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-amber-50 text-amber-700 border border-amber-200"
+                    }
+                  >
+                    {EMPLOYMENT_STATUS_LABELS[user.employmentStatus] ?? user.employmentStatus}
+                  </Badge>
+                </TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -176,6 +204,17 @@ export function UsersTable({
                         <KeyRound className="h-4 w-4 mr-2" />
                         Reset Password
                       </DropdownMenuItem>
+                      {user.employmentStatus === "probation" &&
+                        user.role !== "super_admin" &&
+                        user.role !== "md" && (
+                          <DropdownMenuItem
+                            onClick={() => handleConfirm(user.id, user.name)}
+                            className="text-emerald-600 focus:text-emerald-600"
+                          >
+                            <ShieldCheck className="h-4 w-4 mr-2" />
+                            Confirm Employee
+                          </DropdownMenuItem>
+                        )}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => handleToggle(user.id, user.isActive)}

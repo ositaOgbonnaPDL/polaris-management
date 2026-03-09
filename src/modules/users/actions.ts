@@ -84,10 +84,12 @@ export async function toggleDepartmentStatus(id: number, isActive: boolean) {
 // USER ACTIONS
 // ─────────────────────────────────────────────
 
+const EXECUTIVE_ROLES = ["md", "super_admin"] as const;
+
 const CreateUserSchema = z.object({
   name: z.string().min(2, "Name is required"),
   email: z.string().email(),
-  role: z.enum(["super_admin", "md", "finance", "admin", "manager", "staff"]),
+  role: z.enum(["super_admin", "md", "finance", "admin", "hr_manager", "manager", "staff"]),
   departmentId: z.string().min(1, "Department is required"),
   reportsToId: z.string().optional(),
 });
@@ -120,6 +122,8 @@ export async function createUser(formData: FormData) {
   const passwordHash = await bcrypt.hash(tempPassword, 12);
 
   try {
+    const isExecutive = EXECUTIVE_ROLES.includes(role as (typeof EXECUTIVE_ROLES)[number]);
+
     const [user] = await db
       .insert(users)
       .values({
@@ -130,6 +134,8 @@ export async function createUser(formData: FormData) {
         departmentId: parseInt(departmentId),
         reportsToId: reportsToId ? parseInt(reportsToId) : null,
         mustChangePassword: true,
+        // Executive roles are always confirmed — never on probation
+        ...(isExecutive && { employmentStatus: "confirmed" }),
       })
       .returning();
 
@@ -164,6 +170,8 @@ export async function updateUser(id: number, formData: FormData) {
   const { name, email, role, departmentId, reportsToId, isActive } =
     parsed.data;
 
+  const isExecutive = EXECUTIVE_ROLES.includes(role as (typeof EXECUTIVE_ROLES)[number]);
+
   await db
     .update(users)
     .set({
@@ -173,6 +181,8 @@ export async function updateUser(id: number, formData: FormData) {
       departmentId: parseInt(departmentId),
       reportsToId: reportsToId ? parseInt(reportsToId) : null,
       isActive: isActive ?? true,
+      // Executive roles are always confirmed — auto-set if role changed to executive
+      ...(isExecutive && { employmentStatus: "confirmed" }),
       updatedAt: new Date().toISOString(),
     })
     .where(eq(users.id, id));

@@ -1,16 +1,17 @@
 import { requireAuth } from "@/shared/lib/auth";
 import { MODULE_GROUPS } from "@/shared/components/layout/nav-items";
 import { db } from "@/db";
-import { requisitions } from "@/db/schema";
-import { eq, and, inArray, count } from "drizzle-orm";
+import { requisitions, leaveRequests } from "@/db/schema";
+import { eq, and, inArray, count, or } from "drizzle-orm";
 import { ROLES } from "@/shared/constants";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { FileText, Shield, ArrowRight } from "lucide-react";
+import { FileText, Shield, CalendarDays, ArrowRight } from "lucide-react";
 
 const MODULE_ICON_MAP = {
   FileText,
   Shield,
+  CalendarDays,
 } as const;
 
 export default async function HubPage() {
@@ -66,6 +67,51 @@ export default async function HubPage() {
     }
 
     badgeCounts["requisitions"] = actionableCount > 0 ? actionableCount : null;
+  }
+
+  // Badge count for Leave module
+  const leaveModule = accessibleModules.find((m) => m.id === "leave");
+  if (leaveModule) {
+    let leaveCount = 0;
+
+    if (role === ROLES.STAFF) {
+      // Staff: count reliever requests pending their response
+      const result = await db
+        .select({ count: count() })
+        .from(leaveRequests)
+        .where(and(eq(leaveRequests.relieverId, userId), eq(leaveRequests.relieverStatus, "pending")));
+      leaveCount = result[0].count;
+    } else if (role === ROLES.MANAGER || role === ROLES.ADMIN) {
+      // Manager / Admin HOD: pending_manager queue
+      const result = await db
+        .select({ count: count() })
+        .from(leaveRequests)
+        .where(eq(leaveRequests.status, "pending_manager"));
+      leaveCount = result[0].count;
+    } else if (role === ROLES.HR_MANAGER) {
+      // HR Manager: pending_hr queue
+      const result = await db
+        .select({ count: count() })
+        .from(leaveRequests)
+        .where(eq(leaveRequests.status, "pending_hr"));
+      leaveCount = result[0].count;
+    } else if (role === ROLES.MD) {
+      // MD: pending_md queue
+      const result = await db
+        .select({ count: count() })
+        .from(leaveRequests)
+        .where(eq(leaveRequests.status, "pending_md"));
+      leaveCount = result[0].count;
+    } else if (role === ROLES.SUPER_ADMIN) {
+      // Super admin sees all in-flight
+      const result = await db
+        .select({ count: count() })
+        .from(leaveRequests)
+        .where(inArray(leaveRequests.status, ["pending_manager", "pending_hr", "pending_md", "pending_reliever"]));
+      leaveCount = result[0].count;
+    }
+
+    badgeCounts["leave"] = leaveCount > 0 ? leaveCount : null;
   }
 
   return (

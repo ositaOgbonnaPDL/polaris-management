@@ -18,7 +18,19 @@ export default withAuth(
 
     // Role-based route protection
     if (pathname.startsWith("/superadmin")) {
-      if (token?.role !== "super_admin") {
+      // HR Manager can access specific leave-related superadmin pages
+      const hrManagerAllowedPaths = [
+        "/superadmin/leave-types",
+        "/superadmin/leave-policies",
+        "/superadmin/public-holidays",
+        "/superadmin/leave-adjustments",
+        "/superadmin/leave-reports",
+      ];
+      const isHRManagerAllowed =
+        token?.role === "hr_manager" &&
+        hrManagerAllowedPaths.some((p) => pathname.startsWith(p));
+
+      if (token?.role !== "super_admin" && !isHRManagerAllowed) {
         return NextResponse.redirect(new URL("/", req.url));
       }
     }

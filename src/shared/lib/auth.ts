@@ -37,6 +37,6 @@ export function canAccessDepartment(
   targetDepartmentId: string | number,
 ): boolean {
   if (userRole === ROLES.SUPER_ADMIN || userRole === ROLES.MD) return true;
-  if (userRole === ROLES.FINANCE || userRole === ROLES.ADMIN) return true;
+  if (userRole === ROLES.FINANCE || userRole === ROLES.ADMIN || userRole === ROLES.HR_MANAGER) return true;
   return userDepartmentId === String(targetDepartmentId);
 }

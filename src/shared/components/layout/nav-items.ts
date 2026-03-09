@@ -21,6 +21,61 @@ export type ModuleGroup = {
 
 export const MODULE_GROUPS: ModuleGroup[] = [
   {
+    id: "leave",
+    label: "Leave Management",
+    description: "Apply for leave, track balances, and manage team time-off",
+    icon: "CalendarDays",
+    href: "/leave/dashboard",
+    basePaths: ["/leave"],
+    roles: [ROLES.STAFF, ROLES.MANAGER, ROLES.ADMIN, ROLES.HR_MANAGER, ROLES.FINANCE, ROLES.MD],
+    navItems: [
+      {
+        label: "Dashboard",
+        href: "/leave/dashboard",
+        icon: "LayoutDashboard",
+        roles: [ROLES.STAFF, ROLES.MANAGER, ROLES.ADMIN, ROLES.HR_MANAGER, ROLES.FINANCE],
+        exactMatch: true,
+      },
+      {
+        label: "Apply for Leave",
+        href: "/leave/new",
+        icon: "Plus",
+        roles: [ROLES.STAFF, ROLES.MANAGER, ROLES.ADMIN, ROLES.HR_MANAGER],
+        exactMatch: true,
+      },
+      {
+        label: "My Leave",
+        href: "/leave/my",
+        icon: "FileText",
+        roles: [ROLES.STAFF, ROLES.MANAGER, ROLES.ADMIN, ROLES.HR_MANAGER],
+      },
+      {
+        label: "Reliever Requests",
+        href: "/leave/reliever-requests",
+        icon: "UserCheck",
+        roles: [ROLES.STAFF, ROLES.MANAGER, ROLES.ADMIN, ROLES.HR_MANAGER],
+      },
+      {
+        label: "Pending Approvals",
+        href: "/leave/approvals",
+        icon: "ClipboardCheck",
+        roles: [ROLES.MANAGER, ROLES.ADMIN, ROLES.HR_MANAGER, ROLES.MD, ROLES.SUPER_ADMIN],
+      },
+      {
+        label: "Team Calendar",
+        href: "/leave/calendar",
+        icon: "CalendarDays",
+        roles: [ROLES.STAFF, ROLES.MANAGER, ROLES.ADMIN, ROLES.HR_MANAGER, ROLES.FINANCE, ROLES.MD],
+      },
+      {
+        label: "All Requests",
+        href: "/leave/all",
+        icon: "Archive",
+        roles: [ROLES.ADMIN, ROLES.HR_MANAGER, ROLES.MD, ROLES.SUPER_ADMIN],
+      },
+    ],
+  },
+  {
     id: "requisitions",
     label: "Requisitions",
     description:
@@ -77,7 +132,7 @@ export const MODULE_GROUPS: ModuleGroup[] = [
     icon: "Shield",
     href: "/superadmin/users",
     basePaths: ["/superadmin"],
-    roles: [ROLES.SUPER_ADMIN],
+    roles: [ROLES.SUPER_ADMIN, ROLES.HR_MANAGER],
     navItems: [
       {
         label: "User Management",
@@ -96,6 +151,36 @@ export const MODULE_GROUPS: ModuleGroup[] = [
         href: "/superadmin/audit",
         icon: "ScrollText",
         roles: [ROLES.SUPER_ADMIN],
+      },
+      {
+        label: "Leave Types",
+        href: "/superadmin/leave-types",
+        icon: "Tag",
+        roles: [ROLES.SUPER_ADMIN, ROLES.HR_MANAGER],
+      },
+      {
+        label: "Leave Policies",
+        href: "/superadmin/leave-policies",
+        icon: "CalendarCheck",
+        roles: [ROLES.SUPER_ADMIN, ROLES.HR_MANAGER],
+      },
+      {
+        label: "Public Holidays",
+        href: "/superadmin/public-holidays",
+        icon: "Calendar",
+        roles: [ROLES.SUPER_ADMIN, ROLES.HR_MANAGER],
+      },
+      {
+        label: "Leave Adjustments",
+        href: "/superadmin/leave-adjustments",
+        icon: "SlidersHorizontal",
+        roles: [ROLES.SUPER_ADMIN, ROLES.HR_MANAGER],
+      },
+      {
+        label: "Leave Reports",
+        href: "/superadmin/leave-reports",
+        icon: "BarChart2",
+        roles: [ROLES.SUPER_ADMIN, ROLES.HR_MANAGER],
       },
     ],
   },

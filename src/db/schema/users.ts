@@ -19,7 +19,7 @@ export const users = sqliteTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   role: text("role", {
-    enum: ["super_admin", "md", "finance", "admin", "manager", "staff"],
+    enum: ["super_admin", "md", "finance", "admin", "hr_manager", "manager", "staff"],
   })
     .notNull()
     .default("staff"),
@@ -35,6 +35,14 @@ export const users = sqliteTable("users", {
     .notNull()
     .default(true),
   lastLoginAt: text("last_login_at"),
+  // Employment status — HR manually confirms staff after probation
+  employmentStatus: text("employment_status", {
+    enum: ["probation", "confirmed"],
+  })
+    .notNull()
+    .default("probation"),
+  confirmedAt: text("confirmed_at"),
+  confirmedBy: integer("confirmed_by"), // references users.id (self-referential, no FK to avoid cycles)
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),

@@ -53,7 +53,7 @@ export function EditUserDialog({
   const [selectedRole, setSelectedRole] = useState(user.role);
 
   const managers = users.filter(
-    (u) => u.id !== user.id && (u.role === ROLES.MANAGER || u.role === ROLES.ADMIN),
+    (u) => u.id !== user.id && (u.role === ROLES.MANAGER || u.role === ROLES.ADMIN || u.role === ROLES.HR_MANAGER),
   );
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -172,7 +172,7 @@ export function EditUserDialog({
                 </div>
               </div>
 
-              {selectedRole === ROLES.STAFF && managers.length > 0 && (
+              {[ROLES.STAFF, ROLES.MANAGER, ROLES.ADMIN, ROLES.HR_MANAGER].includes(selectedRole) && managers.length > 0 && (
                 <div className="space-y-2">
                   <Label>Reports To</Label>
                   <Select name="reportsToId">

@@ -42,9 +42,9 @@ export function CreateUserDialog({
   const [copied, setCopied] = useState(false);
   const [selectedRole, setSelectedRole] = useState("");
 
-  // Managers are the only ones that can appear as "reports to"
+  // HOD-level users that can appear as "reports to"
   const managers = users.filter(
-    (u) => u.role === ROLES.MANAGER || u.role === ROLES.ADMIN,
+    (u) => u.role === ROLES.MANAGER || u.role === ROLES.ADMIN || u.role === ROLES.HR_MANAGER,
   );
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -199,8 +199,8 @@ export function CreateUserDialog({
                 </div>
               </div>
 
-              {/* Only show "Reports To" for staff role */}
-              {selectedRole === ROLES.STAFF && managers.length > 0 && (
+              {/* Show "Reports To" for staff, manager, admin, and hr_manager */}
+              {[ROLES.STAFF, ROLES.MANAGER, ROLES.ADMIN, ROLES.HR_MANAGER].includes(selectedRole) && managers.length > 0 && (
                 <div className="space-y-2">
                   <Label>Reports To</Label>
                   <Select name="reportsToId">
